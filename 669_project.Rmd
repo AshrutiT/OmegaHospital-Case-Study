@@ -1,0 +1,152 @@
+---
+title: "HMP 669 project contribution"
+output: html_notebook
+---
+
+```{r}
+library(tidylab)
+library(tidyverse)
+library(ggplot2)
+library(skimr)
+```
+
+A suggested (non-exhaustive) list of financial measures includes:
+
+Profitability of patients from Cardiac and Orthopedic services
+LOS outlier rates
+Payer mix
+Rates of emergent vs. elective care
+Probable future demand given Omega's patient demographics for Cardiac and Orthopedic services (this is less of a coding/query question, and more of discussing what you can an infer from demographics and trends)
+
+```{r}
+finance = read_csv("OMEGA_2000.csv")
+service = read_csv("SERVICE.csv")
+```
+
+#filter by Physicians, specialized in Ortho and 
+```{r}
+finance1 = 
+  finance %>% 
+  group_by(DRG) %>% 
+  filter(DRG == 5 | DRG == 8)
+```
+
+
+#Selected on DRG
+```{r}
+  finance1 %>%
+  mutate(DRG = if_else(DRG == 5, "cardio", "ortho")) %>% 
+  ggplot(aes(x = DRG, y = LOS, fill = DRG)) +
+  geom_violin() 
+```
+
+```{r}
+finance1 %>%
+  mutate(DRG = if_else(DRG == 5, "cardio", "ortho")) %>% 
+  ggplot(aes(x = DRG, y = LOS, fill = DRG)) +
+  geom_boxplot() 
+```
+
+##Selected on PHY_A_SPC
+```{r}
+finance2 = 
+  finance %>% 
+  group_by(PHYS_A_SPC) %>% 
+  filter(PHYS_A_SPC == 14 | PHYS_A_SPC == 58)
+```
+
+```{r}
+finance2 %>%
+  mutate(PHYS_A_SPC = if_else(PHYS_A_SPC == 14, "cardio", "ortho")) %>% 
+  ggplot(aes(x = PHYS_A_SPC, y = LOS, fill = PHYS_A_SPC)) +
+  geom_boxplot() 
+```
+```{r}
+finance1 %>%
+  mutate(DRG = if_else(DRG == 5, "cardio", "ortho")) %>% 
+  ggplot(aes(x = DRG, y = LOS, fill = DRG)) +
+  geom_boxplot()
+```
+
+
+```{r}
+  group_by(PHYS_A_SPC) %>% 
+  mutate(payment_prop = sum(TOT_PAY)/total_payment)
+```
+
+```{r}
+finance41 = 
+  finance2 %>% 
+  group_by(PHYS_A_SPC) %>% 
+  summarize(total_pay = sum(TOT_PAY))
+```
+ 
+```{r}
+finance41 %>%
+  mutate(PHYS_A_SPC = if_else(PHYS_A_SPC == 14, "cardio", "ortho")) %>% 
+  ggplot(aes(x = PHYS_A_SPC, y = total_pay)) +
+  geom_bar()
+```
+
+```{r}
+fin_service = 
+  full_join(finance, service, by = c("PHYS_A_SPC" = "SERVICE"))
+```
+ 
+```{r}
+head(fin_service)
+```
+ 
+            
+```{r}
+skim(fin_service)
+```
+
+
+##1
+#compare with national benchmarks, the whole hop versus other service lines
+
+A. Revenue
+
+```{r}
+    fin_service %>% 
+    group_by(DESCRIPT) %>% 
+    dplyr::summarize(total_pay = sum((TOT_PAY), na.rm = TRUE)) %>% 
+    dplyr::mutate(payment_prop = ((total_pay/sum(total_pay, na.rm = TRUE)*100))) %>%
+    filter(payment_prop > 3) %>% 
+    ggplot(aes(x = reorder(DESCRIPT, - payment_prop), y = payment_prop)) +
+    geom_bar(stat = 'identity')
+```
+
+B. Profit
+
+```{r}
+service_profit = 
+  fin_service %>% 
+  group_by(PHYS_A_SPC) %>% 
+  dplyr::mutate(profitability = (TOT_PAY - TOT_COST)/TOT_PAY, na.rm = T) %>% 
+  select(DESCRIPT, PHYS_A_SPC, profitability) %>% 
+  arrange(desc(profitability))
+  
+
+
+service_profit
+``` 
+
+
+#Comparing costs
+```{r}
+finance_payment %>% 
+  filter(PHYS_A_SPC == 14 | PHYS_A_SPC == 18) %>% 
+  mutate(PHYS_A_SPC = if_else(PHYS_A_SPC == 14, "cardio", "ortho" )) %>% 
+  ggplot(aes(PHYS_A_SPC))
+```
+
+
+##2 Box Plot
+
+##3 Medicaid pays less (low income patients coming to the hospital), compare uninsured, payment, missing, etc.
+How tht total income varies amongst payer
+
+
+##4 emergent: why they picked that particular excel.
